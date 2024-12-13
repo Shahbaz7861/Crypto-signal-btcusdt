@@ -8,7 +8,7 @@ def fetch_hash_rate_and_difficulty():
     url = "https://blockchain.info/stats"
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        response.raise_for_status()  # Raise exception for HTTP errors
         data = response.json()
         hash_rate = data.get("hash_rate", None)
         difficulty = data.get("difficulty", None)
@@ -20,37 +20,30 @@ def fetch_hash_rate_and_difficulty():
         st.error("Invalid JSON response from Blockchain API.")
         return None, None
 
-def fetch_wallet_inflows(address):
-    # Replace with your blockchain API endpoint or mock example
-    return np.random.uniform(10, 100)  # Mock value for wallet inflows (replace with real API)
-
-# === Crypto Data Fetching ===
+# === Crypto Data Fetching with CoinGecko ===
 def fetch_crypto_price():
-    url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return float(data["price"]) if "price" in data else None
+        return float(data["bitcoin"]["usd"]) if "bitcoin" in data else None
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching crypto price: {e}")
         return None
-    except ValueError:
-        st.error("Invalid JSON response from Binance API.")
-        return None
 
 def fetch_crypto_volume():
-    url = "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"
+    url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return float(data["volume"]) if "volume" in data else None
+        return data["total_volumes"][-1][1] if "total_volumes" in data else None
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching crypto volume: {e}")
         return None
-    except ValueError:
-        st.error("Invalid JSON response from Binance API.")
+    except (KeyError, IndexError):
+        st.error("Invalid response structure for volume data.")
         return None
 
 # === 5 Key Formulas ===
