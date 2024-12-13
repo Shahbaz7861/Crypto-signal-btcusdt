@@ -6,11 +6,19 @@ from sklearn.ensemble import RandomForestClassifier
 # === Fetch Blockchain Metrics ===
 def fetch_hash_rate_and_difficulty():
     url = "https://blockchain.info/stats"
-    response = requests.get(url)
-    data = response.json()
-    hash_rate = data.get("hash_rate", None)
-    difficulty = data.get("difficulty", None)
-    return hash_rate, difficulty
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        data = response.json()
+        hash_rate = data.get("hash_rate", None)
+        difficulty = data.get("difficulty", None)
+        return hash_rate, difficulty
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching hash rate and difficulty: {e}")
+        return None, None
+    except ValueError:
+        st.error("Invalid JSON response from Blockchain API.")
+        return None, None
 
 def fetch_wallet_inflows(address):
     # Replace with your blockchain API endpoint or mock example
@@ -19,15 +27,31 @@ def fetch_wallet_inflows(address):
 # === Crypto Data Fetching ===
 def fetch_crypto_price():
     url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
-    response = requests.get(url)
-    data = response.json()
-    return float(data["price"]) if "price" in data else None
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return float(data["price"]) if "price" in data else None
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching crypto price: {e}")
+        return None
+    except ValueError:
+        st.error("Invalid JSON response from Binance API.")
+        return None
 
 def fetch_crypto_volume():
     url = "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"
-    response = requests.get(url)
-    data = response.json()
-    return float(data["volume"]) if "volume" in data else None
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return float(data["volume"]) if "volume" in data else None
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching crypto volume: {e}")
+        return None
+    except ValueError:
+        st.error("Invalid JSON response from Binance API.")
+        return None
 
 # === 5 Key Formulas ===
 # 1. Weighted Probability Formula
@@ -73,10 +97,8 @@ volume = fetch_crypto_volume()
 hash_rate, difficulty = fetch_hash_rate_and_difficulty()
 
 # Example Data for Machine Learning
-features = np.array([[price, volume, hash_rate, difficulty]])  # Real features to train the model
-labels = ["Buy", "Sell"]  # Mock labels (train with historical data)
-
 if price and volume and hash_rate and difficulty:
+    features = np.array([[price, volume, hash_rate, difficulty]])
     probabilities = weighted_probability({"hash_rate": hash_rate, "difficulty": difficulty})
     signal = signal_generation(25, price, volume)  # Example RSI and EMA
     st.write(f"Price: ${price}")
@@ -85,5 +107,5 @@ if price and volume and hash_rate and difficulty:
     st.write(f"Difficulty: {difficulty}")
     st.write(f"Signal: {signal}")
 else:
-    st.write("Failed to fetch data. Check API connection.")
-# Added app.py as signal generator
+    st.error("Failed to fetch required data. Please check your API connections.")
+    # Added app.py as signal generator
