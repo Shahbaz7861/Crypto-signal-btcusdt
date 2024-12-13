@@ -73,3 +73,15 @@ def fetch_mining_data():
         }
     except Exception as e:
         return {"error": f"Error fetching mining data: {e}"}
+
+
+def fetch_mock_market_data():
+    """Mock function to simulate live market data."""
+    try:
+        data = pd.DataFrame({
+            "price": [50000, 50150, 50200, 50250, 50300],  # Simulated price data
+            "volume": [100, 200, 150, 300, 250],           # Simulated volume data
+        })
+        return data
+    except Exception as e:
+        return {"error": f"Mock market data fetch failed: {e}"}
