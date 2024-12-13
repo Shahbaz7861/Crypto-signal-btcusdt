@@ -86,4 +86,4 @@ if price and volume and hash_rate and difficulty:
     st.write(f"Signal: {signal}")
 else:
     st.write("Failed to fetch data. Check API connection.")
-  Added app.py as signal generator
+    Added app.py as signal generator
