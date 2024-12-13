@@ -1,6 +1,3 @@
-@st.cache_data(ttl=60)  # Cache data for 60 seconds
-def clear_cache():
-    pass
 import streamlit as st
 import requests
 import numpy as np
