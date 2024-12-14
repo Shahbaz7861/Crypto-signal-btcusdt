@@ -1,77 +1,66 @@
-import streamlit as st
-from utils.fetchers import fetch_hashrate, fetch_difficulty, fetch_price, fetch_mock_market_data
-from utils.formulas import weighted_probability, momentum_prediction, price_prediction
+from utils.fetchers import fetch_combined_metrics
+from utils.formulas import calculate_signals
 from utils.signal_generator import generate_signals
 import logging
 import pandas as pd
 
-# Setup logging
-logging.basicConfig(filename="logs/app.log", level=logging.INFO, format="%(asctime)s - %(message)s")
-logging.info("App initialized")
+# Configure logging
+logging.basicConfig(
+    filename="app.log",  # Save logs in the same directory as the script
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
-# App Title
-st.title("Crypto Signals BTC/USDT Dashboard")
+def main():
+    logging.info("=== Starting Application ===")
 
-# Sidebar Parameters
-st.sidebar.header("Adjust Formula Parameters")
-volume_weight = st.sidebar.slider("Volume Weight", 0.1, 1.0, 0.5)
-price_weight = st.sidebar.slider("Price Weight", 0.1, 1.0, 0.4)
-blockchain_weight = st.sidebar.slider("Blockchain Weight", 0.1, 1.0, 0.1)
-momentum_threshold = st.sidebar.slider("Momentum Threshold", 0.01, 0.5, 0.1)
-scalping_sensitivity = st.sidebar.slider("Scalping Sensitivity", 0.01, 0.2, 0.05)
+    # Step 1: Fetch data
+    logging.info("Fetching data from APIs...")
+    combined_data = fetch_combined_metrics()
 
-# Display Mining and Market Data
-st.header("Mining and Market Data")
-hashrate = fetch_hashrate()
-difficulty = fetch_difficulty()
-price = fetch_price()
+    if not combined_data:
+        logging.error("Failed to fetch data from APIs. Exiting application.")
+        return
 
-if isinstance(hashrate, dict) and "error" in hashrate:
-    st.error(hashrate["error"])
-else:
-    st.write(f"**Hash Rate:** {hashrate} EH/s")
+    logging.info("Data fetched successfully!")
 
-if isinstance(difficulty, dict) and "error" in difficulty:
-    st.error(difficulty["error"])
-else:
-    st.write(f"**Difficulty:** {difficulty}")
+    # Step 2: Extract fetched metrics
+    price_data = combined_data["price_data"]
+    difficulty = combined_data["difficulty"]
+    hashrate = combined_data["hash_rate"]
 
-if isinstance(price, dict) and "error" in price:
-    st.error(price["error"])
-else:
-    st.write(f"**Price:** ${price:.2f}")
+    # Preprocess Binance price data
+    df = pd.DataFrame(
+        price_data,
+        columns=[
+            "open_time", "open", "high", "low", "close", "volume",
+            "close_time", "quote_asset_volume", "num_trades",
+            "taker_buy_base", "taker_buy_quote", "ignore",
+        ],
+    )
+    df["price"] = df["close"].astype(float)
+    df["volume"] = df["volume"].astype(float)
 
-# Fetch and Display Live Market Data
-st.header("Live Market Data and Trading Signals")
-if st.button("Fetch Live Data"):
+    logging.info("Price data processed into DataFrame.")
+
+    # Step 3: Define weights and thresholds for calculations
+    vw, pw, bw = 0.3, 0.4, 0.3  # Weights for volume, price, and mining pressure
+    mt, ss = 0.01, 0.05  # Momentum and scalp thresholds
+
+    # Step 4: Generate trading signals
     try:
-        # Fetch mock market data
-        market_data = fetch_mock_market_data()
-
-        # Generate trading signals
-        signals = generate_signals(
-            market_data,
-            hashrate=hashrate,
-            difficulty=difficulty,
-            vw=volume_weight,
-            pw=price_weight,
-            bw=blockchain_weight,
-            mt=momentum_threshold,
-            ss=scalping_sensitivity
-        )
-
-        # Display signals
-        st.subheader("Trading Signals")
-        st.dataframe(signals)
+        logging.info("Generating trading signals...")
+        signals = generate_signals(df, hashrate, difficulty, vw, pw, bw, mt, ss)
+        logging.info("Signals generated successfully!")
     except Exception as e:
-        st.error(f"Error generating signals: {e}")
+        logging.error(f"Error generating signals: {e}")
+        return
 
-# Historical Data Section
-st.header("Historical Data")
-if st.button("Fetch Historical Data"):
-    try:
-        # Example historical data (replace with actual fetch logic)
-        historical_data = pd.read_csv("data/historical.csv")
-        st.write(historical_data.head())
-    except Exception as e:
-        st.error(f"Error fetching historical data: {e}")
+    # Step 5: Display results
+    logging.info("Displaying generated signals...")
+    print("=== Generated Signals ===")
+    print(signals[["price", "momentum", "buy_signal", "sell_signal"]])
+    logging.info("Application completed successfully.")
+
+if __name__ == "__main__":
+    main()
