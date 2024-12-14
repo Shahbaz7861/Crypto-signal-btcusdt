@@ -1,9 +1,8 @@
 import streamlit as st
 import requests
-import pandas as pd
-import numpy as np
 
 # --- Fetch Functions ---
+
 def fetch_mempool_transaction_count():
     """
     Fetch transaction count from Mempool API.
@@ -39,7 +38,7 @@ def fetch_blockchain_difficulty():
             st.success("Blockchain Difficulty Fetched Successfully!")
             return difficulty
         else:
-            st.error(f"Failed to fetch difficulty. Status Code: {response.status_code}")
+            st.error(f"Failed to fetch Blockchain difficulty. Status Code: {response.status_code}")
             return None
     except Exception as e:
         st.error(f"Error fetching Blockchain Difficulty: {e}")
@@ -60,7 +59,7 @@ def fetch_blockchain_hashrate():
             st.success("Blockchain Hash Rate Fetched Successfully!")
             return hashrate
         else:
-            st.error(f"Failed to fetch hash rate. Status Code: {response.status_code}")
+            st.error(f"Failed to fetch Blockchain hash rate. Status Code: {response.status_code}")
             return None
     except Exception as e:
         st.error(f"Error fetching Blockchain Hash Rate: {e}")
@@ -69,19 +68,22 @@ def fetch_blockchain_hashrate():
 
 def fetch_binance_price_data():
     """
-    Fetch price data from Binance API.
+    Fetch price data from Binance API with debugging.
     Returns:
-        list: Binance candlestick data.
+        list: Binance candlestick data for BTC/USDT.
     """
     try:
         st.write("Fetching Binance Price Data...")
         url = "https://api.binance.com/api/v3/klines"
         params = {"symbol": "BTCUSDT", "interval": "1m", "limit": 15}
         response = requests.get(url, params=params)
+
         if response.status_code == 200:
-            data = response.json()
             st.success("Binance Price Data Fetched Successfully!")
-            return data
+            return response.json()
+        elif response.status_code == 451:
+            st.error("Binance API is unavailable in your region (451 error). Try using a VPN or alternative API.")
+            return None
         else:
             st.error(f"Failed to fetch Binance price data. Status Code: {response.status_code}")
             return None
@@ -92,28 +94,76 @@ def fetch_binance_price_data():
 
 def fetch_binance_order_book():
     """
-    Fetch order book data from Binance API.
+    Fetch order book data from Binance API with debugging.
     Returns:
-        dict: Order book data (bids and asks).
+        dict: Order book data (bids and asks) for BTC/USDT.
     """
     try:
         st.write("Fetching Binance Order Book...")
         url = "https://api.binance.com/api/v3/depth"
         params = {"symbol": "BTCUSDT", "limit": 10}
         response = requests.get(url, params=params)
+
         if response.status_code == 200:
-            data = response.json()
             st.success("Binance Order Book Fetched Successfully!")
             return {
-                "bids": data["bids"],
-                "asks": data["asks"]
+                "bids": response.json()["bids"],
+                "asks": response.json()["asks"],
             }
+        elif response.status_code == 451:
+            st.error("Binance API is unavailable in your region (451 error). Try using a VPN or alternative API.")
+            return None
         else:
             st.error(f"Failed to fetch Binance Order Book. Status Code: {response.status_code}")
             return None
     except Exception as e:
         st.error(f"Error fetching Binance Order Book: {e}")
         return None
+
+
+def fetch_price_data_with_fallback():
+    """
+    Fetch price data using Binance as primary and CoinGecko as fallback.
+    Returns:
+        list: Price data in a compatible format.
+    """
+    # Try Binance API first
+    price_data = fetch_binance_price_data()
+    if price_data:
+        return price_data
+
+    # If Binance fails, fallback to CoinGecko
+    st.warning("Falling back to CoinGecko for price data...")
+    try:
+        response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+        if response.status_code == 200:
+            st.success("Price Data Fetched from CoinGecko!")
+            return [{"close": response.json()["bitcoin"]["usd"]}]
+        else:
+            st.error(f"Failed to fetch price data from CoinGecko. Status Code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching price data from CoinGecko: {e}")
+        return None
+
+
+def fetch_order_book_with_fallback():
+    """
+    Fetch order book data using Binance as primary and simulated data as fallback.
+    Returns:
+        dict: Order book data (bids and asks).
+    """
+    # Try Binance API first
+    order_book = fetch_binance_order_book()
+    if order_book:
+        return order_book
+
+    # Fallback to simulated data
+    st.warning("Using simulated order book data...")
+    return {
+        "bids": [["10100.00", "0.5"], ["10099.00", "0.3"]],  # Example bids
+        "asks": [["10101.00", "0.4"], ["10102.00", "0.2"]],  # Example asks
+    }
 
 
 def fetch_combined_metrics():
@@ -125,8 +175,8 @@ def fetch_combined_metrics():
     transaction_count = fetch_mempool_transaction_count()
     difficulty = fetch_blockchain_difficulty()
     hash_rate = fetch_blockchain_hashrate()
-    price_data = fetch_binance_price_data()
-    order_book = fetch_binance_order_book()
+    price_data = fetch_price_data_with_fallback()  # Use fallback fetcher for price
+    order_book = fetch_order_book_with_fallback()  # Use fallback fetcher for order book
 
     if (
         transaction_count is not None and difficulty is not None 
@@ -144,24 +194,3 @@ def fetch_combined_metrics():
     else:
         st.warning("Failed to fetch some data sources. Check above for errors.")
         return None
-
-
-# --- Streamlit App Layout ---
-st.title("Crypto Data Fetcher & Debugger")
-
-# Fetch Data Button
-if st.button("Fetch Data"):
-    st.write("Fetching data from APIs...")
-    combined_data = fetch_combined_metrics()
-
-    if combined_data:
-        st.write("### Fetched Data:")
-        st.write(f"Transaction Count: {combined_data['transaction_count']}")
-        st.write(f"Mining Difficulty: {combined_data['difficulty']}")
-        st.write(f"Hash Rate: {combined_data['hash_rate']}")
-        st.write("### Binance Price Data (First Entry):")
-        st.write(combined_data["price_data"][:1])
-        st.write("### Binance Order Book (Top Bids & Asks):")
-        st.write(combined_data["order_book"])
-    else:
-        st.error("Failed to fetch all data.")
