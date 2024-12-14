@@ -3,10 +3,10 @@ from utils.fetchers import fetch_combined_metrics
 from utils.signal_generator import generate_signals
 import pandas as pd
 
-# Streamlit page configuration
+# Set the page configuration FIRST before any other Streamlit commands
 st.set_page_config(page_title="Trading Signal Generator", layout="wide")
 
-# App title
+# Streamlit App
 st.title("📈 Trading Signal Generator")
 st.markdown("Analyze market data and generate real-time trading signals based on advanced metrics.")
 
