@@ -3,8 +3,10 @@ from utils.fetchers import fetch_combined_metrics
 from utils.signal_generator import generate_signals
 import pandas as pd
 
-# Streamlit App Setup
+# Streamlit page configuration
 st.set_page_config(page_title="Trading Signal Generator", layout="wide")
+
+# App title
 st.title("📈 Trading Signal Generator")
 st.markdown("Analyze market data and generate real-time trading signals based on advanced metrics.")
 
@@ -37,7 +39,7 @@ if st.button("Fetch Data"):
         st.subheader("Market Data (Preprocessed)")
         st.dataframe(df.head(), width=900, height=300)
 
-        # Step 3: Define Parameters for Signal Generation
+        # Step 3: Define Signal Parameters
         st.header("Step 2: Configure Signal Parameters")
         vw = st.slider("Weight for Volume (VW)", 0.0, 1.0, 0.3)
         pw = st.slider("Weight for Price (PW)", 0.0, 1.0, 0.4)
